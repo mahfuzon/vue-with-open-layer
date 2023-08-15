@@ -24,93 +24,104 @@ import VectorLayer from 'ol/layer/Vector';
 import Feature from 'ol/Feature';
 import Point from 'ol/geom/Point';
 import { Icon, Style } from 'ol/style';
-import { v4 as uuidv4 } from 'uuid';
+import Translate from 'ol/interaction/Translate';
+import Collection from "ol/Collection"
 import { fromLonLat } from 'ol/proj';
+
+const centerCoordinate = [110.3695, -7.7956];
+const center = fromLonLat(centerCoordinate)
 
 const locations = [
     {
-        id: uuidv4(),
         name: 'Lokasi A',
         latitude: -7.7864,
-        longitude: 110.3658
+        longitude: 110.3658,
     },
     {
-        id: uuidv4(),
         name: 'Lokasi B',
         latitude: -7.8015,
-        longitude: 110.3672
+        longitude: 110.3672,
     },
     {
-        id: uuidv4(),
         name: 'Lokasi C',
         latitude: -7.7937,
-        longitude: 110.3708
-    }
+        longitude: 110.3708,
+    },
 ];
+
+const style = new Style({
+    image: new Icon({
+        scale: .7,
+        anchor: [0.5, 1],
+        src: '//raw.githubusercontent.com/jonataswalker/map-utils/master/images/marker.png'
+    })
+});
+
+
+
+const source = new VectorSource();
 
 export default {
     name: 'MapView',
     data() {
         return {
             input_latitude: "",
-            input_langitude: "",
+            input_langitude: ""
         }
     },
-
     mounted() {
-        this.initializeMap();
+        this.initializeApp();
         this.addMarkers();
     },
     methods: {
-        initializeMap() {
+        initializeApp() {
             const map = new Map({
                 target: 'map',
-                layers: [
-                    new TileLayer({
-                        source: new OSM()
-                    })
-                ],
+                layers: [new TileLayer({ source: new OSM() })],
                 view: new View({
-                    center: fromLonLat([110.3695, -7.7956]),
+                    center: center,
                     zoom: 10
                 })
             });
 
+            map.on('pointermove', function (e) {
+                if (e.dragging) return;
+                const hit = map.hasFeatureAtPixel(map.getEventPixel(e.originalEvent));
+                map.getTargetElement().style.cursor = hit ? 'pointer' : '';
+            });
             this.map = map;
         },
 
         addMarkers() {
-            const vectorSource = new VectorSource();
-            const vectorLayer = new VectorLayer({
-                source: vectorSource
-            });
-
             locations.forEach(location => {
-                const iconFeature = new Feature({
-                    geometry: new Point(fromLonLat([location.longitude, location.latitude])),
+                const point = new Point(fromLonLat([location.longitude, location.latitude]));
+                const vectorLayer = new VectorLayer({
+                    source: source
+                });
+
+                const feature = new Feature({
+                    geometry: point,
                     name: location.name,
                     draggable: true
                 });
 
-                const iconStyle = new Style({
-                    image: new Icon({
-                        src: './marker.png',
-                        scale: 0.1
-                    })
+                feature.setStyle(style);
+                source.addFeature(feature);
+
+                const translate = new Translate({
+                    features: new Collection([feature])
                 });
 
-                iconFeature.setStyle(iconStyle);
-                vectorSource.addFeature(iconFeature);
+                this.map.addInteraction(translate);
+
+                this.map.addLayer(vectorLayer);
             });
 
 
-            this.map.addLayer(vectorLayer);
         },
-
         addLocation() {
             if (this.input_latitude != "" && this.input_langitude != "") {
                 locations.push({
-                    id: uuidv4(),
                     name: `Lokasi ${locations.length + 1}`,
                     latitude: this.input_latitude,
                     longitude: this.input_langitude
@@ -122,11 +133,11 @@ export default {
 
             this.input_latitude = ""
             this.input_langitude = ""
-        }
-    },
-    beforeDestroy() {
-        if (this.map) {
-            this.map.dispose();
+        },
+        beforeDestroy() {
+            if (this.map) {
+                this.map.dispose();
+            }
         }
     }
 };
