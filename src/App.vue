@@ -1,12 +1,9 @@
 <script setup>
-import MapView from './components/MapView.vue';
+import MapView from './components/MapView2.vue';
 </script>
 
 <template>
   <MapView />
 </template>
 
-<style scoped>
-
-
-</style>
+<style scoped></style>

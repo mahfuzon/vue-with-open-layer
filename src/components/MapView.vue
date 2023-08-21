@@ -29,7 +29,14 @@ import Collection from "ol/Collection"
 import { fromLonLat } from 'ol/proj';
 
 const centerCoordinate = [110.3695, -7.7956];
-const center = fromLonLat(centerCoordinate)
+const center = fromLonLat(centerCoordinate);
+
+const view = new View({
+    center: center,
+    zoom: 10
+});
+
+const tileLayer = new TileLayer({ source: new OSM() })
 
 const locations = [
     {
@@ -66,7 +73,8 @@ export default {
     data() {
         return {
             input_latitude: "",
-            input_langitude: ""
+            input_langitude: "",
+            listFeature: []
         }
     },
     mounted() {
@@ -77,11 +85,8 @@ export default {
         initializeApp() {
             const map = new Map({
                 target: 'map',
-                layers: [new TileLayer({ source: new OSM() })],
-                view: new View({
-                    center: center,
-                    zoom: 10
-                })
+                layers: [tileLayer],
+                view: view
             });
 
             map.on('pointermove', function (e) {
@@ -89,9 +94,9 @@ export default {
                 const hit = map.hasFeatureAtPixel(map.getEventPixel(e.originalEvent));
                 map.getTargetElement().style.cursor = hit ? 'pointer' : '';
             });
+            
             this.map = map;
         },
-
         addMarkers() {
             locations.forEach(location => {
                 const point = new Point(fromLonLat([location.longitude, location.latitude]));
@@ -104,6 +109,8 @@ export default {
                     name: location.name,
                     draggable: true
                 });
+
+                this.listFeature.push(feature)
 
                 feature.setStyle(style);
                 source.addFeature(feature);
@@ -138,6 +145,43 @@ export default {
             if (this.map) {
                 this.map.dispose();
             }
+        },
+        setClusterStyle(feature) {
+            const size = feature.get('features').length;
+            const style = new Style({
+                image: new Icon({
+                    src: 'https://openlayers.org/en/latest/examples/data/icon.png',
+                }),
+                text: new Text({
+                    text: size.toString(),
+                    fill: new Fill({
+                        color: '#fff',
+                    }),
+                }),
+            });
+            return style;
+        },
+        setCluster() {
+            const features = locations.map((location) => {
+                return new Feature({
+                    geometry: new Point(fromLonLat([location.longitude, location.latitude])),
+                    name: location.name,
+                });
+            });
+
+            const clusterSource = new Cluster({
+                distance: 40, // Minimum distance between features to be considered part of the same cluster (in pixels)
+                source: new VectorSource({
+                    features: features,
+                }),
+            });
+
+            const clusterLayer = new VectorLayer({
+                source: clusterSource,
+                style: this.setClusterStyle,
+            });
+
+            this.map.addLayer(clusterLayer);
         }
     }
 };
